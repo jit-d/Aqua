@@ -25,8 +25,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    await context.read<WaterProvider>().setGoal(_goal);
-    await context.read<SettingsProvider>().completeOnboarding();
+    final waterProvider = context.read<WaterProvider>();
+    final settingsProvider = context.read<SettingsProvider>();
+    await waterProvider.setGoal(_goal);
+    await settingsProvider.completeOnboarding();
     widget.onComplete();
   }
 
