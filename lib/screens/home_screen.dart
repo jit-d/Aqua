@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/reminder_provider.dart';
 import '../providers/water_provider.dart';
 import '../widgets/quick_add_button.dart';
 import '../widgets/water_progress_ring.dart';
@@ -38,6 +39,34 @@ class HomeScreen extends StatelessWidget {
               remainingMl: wp.remaining,
             ),
           ),
+          const SizedBox(height: 16),
+          Consumer<ReminderProvider>(
+            builder: (_, rp, __) {
+              if (rp.loading) return const SizedBox.shrink();
+              if (!rp.enabled) {
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.notifications_off_outlined),
+                    title: const Text('Reminders are off'),
+                    subtitle: const Text('Enable to get hydration nudges'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Open the Reminders tab')),
+                      );
+                    },
+                  ),
+                );
+              }
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.notifications_active_outlined),
+                  title: const Text('Reminders active'),
+                  subtitle: Text('Every ${rp.interval} minutes'),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 24),
           Row(
             children: [
@@ -47,6 +76,12 @@ class HomeScreen extends StatelessWidget {
                   child: QuickAddButton(amount: a, onTap: () => wp.addWater(a)),
                 ),
             ],
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: () => _openCustomAdd(context, wp),
+            icon: const Icon(Icons.add),
+            label: const Text('Custom amount'),
           ),
           const SizedBox(height: 24),
           Card(
@@ -84,6 +119,86 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openCustomAdd(BuildContext context, WaterProvider wp) async {
+    final amountCtrl = TextEditingController();
+    String drinkType = AppConstants.drinkTypes.first;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: StatefulBuilder(
+          builder: (ctx, setSt) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Add water',
+                  style: Theme.of(ctx)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount (ml)',
+                  hintText: 'e.g. 300',
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: drinkType,
+                decoration: const InputDecoration(labelText: 'Drink type'),
+                items: AppConstants.drinkTypes
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setSt(() => drinkType = v);
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () async {
+                        final v = int.tryParse(amountCtrl.text.trim());
+                        if (v == null || v <= 0) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Enter a valid amount')));
+                          return;
+                        }
+                        await wp.addWater(v, drinkType: drinkType);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
