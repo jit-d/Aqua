@@ -24,6 +24,8 @@ class ReminderProvider with ChangeNotifier {
   int _quietStart = 22 * 60; // 22:00
   int _quietEnd = 8 * 60; // 08:00
   bool _pauseAfterGoal = true;
+  bool _callMode = false;
+  String? _customSound;
   bool _loading = true;
 
   bool get enabled => _enabled;
@@ -34,6 +36,8 @@ class ReminderProvider with ChangeNotifier {
   int get quietStart => _quietStart;
   int get quietEnd => _quietEnd;
   bool get pauseAfterGoal => _pauseAfterGoal;
+  bool get callMode => _callMode;
+  String? get customSound => _customSound;
   bool get loading => _loading;
 
   Future<void> load() async {
@@ -46,6 +50,9 @@ class ReminderProvider with ChangeNotifier {
     _quietStart = p.getInt(_kQuietStart) ?? 22 * 60;
     _quietEnd = p.getInt(_kQuietEnd) ?? 8 * 60;
     _pauseAfterGoal = p.getBool(_kPauseAfterGoal) ?? true;
+    _callMode = p.getBool('rem_call_mode') ?? false;
+    final snd = p.getString('rem_custom_sound');
+    _customSound = (snd != null && snd.isNotEmpty) ? snd : null;
     _loading = false;
     notifyListeners();
     if (_enabled) await _reschedule();
@@ -61,6 +68,8 @@ class ReminderProvider with ChangeNotifier {
     await p.setInt(_kQuietStart, _quietStart);
     await p.setInt(_kQuietEnd, _quietEnd);
     await p.setBool(_kPauseAfterGoal, _pauseAfterGoal);
+    await p.setBool('rem_call_mode', _callMode);
+    await p.setString('rem_custom_sound', _customSound ?? '');
   }
 
   Future<void> _reschedule() async {
@@ -73,6 +82,7 @@ class ReminderProvider with ChangeNotifier {
       quietStart: _quietStart,
       quietEnd: _quietEnd,
       primaryVolume: _primaryVolume,
+      customSound: _callMode ? _customSound : null,
     );
   }
 
@@ -132,6 +142,20 @@ class ReminderProvider with ChangeNotifier {
     await _reschedule();
   }
 
+  Future<void> setCallMode(bool v) async {
+    _callMode = v;
+    notifyListeners();
+    await _persist();
+    await _reschedule();
+  }
+
+  Future<void> setCustomSound(String? soundUri) async {
+    _customSound = soundUri;
+    notifyListeners();
+    await _persist();
+    await _reschedule();
+  }
+
   Future<void> setPauseAfterGoal(bool v) async {
     _pauseAfterGoal = v;
     notifyListeners();
@@ -144,6 +168,6 @@ class ReminderProvider with ChangeNotifier {
   }
 
   Future<void> sendTest() async {
-    await NotificationService().showTestNotification();
+    await NotificationService().showTestCall(primaryVolume: _primaryVolume, customSound: _callMode ? _customSound : null);
   }
 }

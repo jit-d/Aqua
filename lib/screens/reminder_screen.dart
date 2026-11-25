@@ -119,6 +119,54 @@ class ReminderScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: const Text('Aqua Call Mode (Full-Screen)'),
+                subtitle: const Text('Rings like a phone call. Highly visible.'),
+                value: rp.callMode,
+                onChanged: rp.setCallMode,
+              ),
+              if (rp.callMode) ...[
+                const Divider(height: 1),
+                ListTile(
+                  title: const Text('Notification Sound'),
+                  subtitle: Text(rp.customSound ?? 'Default Alarm Sound'),
+                  trailing: const Icon(Icons.music_note),
+                  onTap: () {
+                    // In a real app, you'd use flutter_ringtone_player or native picker.
+                    // For this snippet, we'll cycle through default system alarms.
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Select Sound'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              title: const Text('Default Alarm'),
+                              onTap: () { rp.setCustomSound(null); Navigator.pop(ctx); },
+                            ),
+                            ListTile(
+                              title: const Text('Ping (System)'),
+                              onTap: () { rp.setCustomSound('content://settings/system/notification_sound'); Navigator.pop(ctx); },
+                            ),
+                            ListTile(
+                              title: const Text('Chime (System)'),
+                              onTap: () { rp.setCustomSound('content://settings/system/ringtone'); Navigator.pop(ctx); },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
           child: SwitchListTile(
             title: const Text('Pause after goal reached'),
             subtitle: const Text(
@@ -132,7 +180,7 @@ class ReminderScreen extends StatelessWidget {
           onPressed: () {
             final cp = context.read<ContainerProvider>();
             final primary = cp.primary?.volumeMl ?? 250;
-            NotificationService().showTestNotification(primaryVolume: primary);
+            NotificationService().showTestCall(primaryVolume: primary);
           },
           icon: const Icon(Icons.notifications_active),
           label: const Text('Send test notification'),

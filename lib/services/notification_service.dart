@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
-import '../database/database_helper.dart';
-import '../models/water_entry.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._();
@@ -13,9 +11,9 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  static const String channelId = 'aqua_reminders_v2'; // New channel for actions
-  static const String channelName = 'Hydration Reminders';
-  static const String channelDesc = 'Hydration reminders with quick logging';
+  static const String channelId = 'aqua_call_channel_v3';
+  static const String channelName = 'Aqua Call Reminders';
+  static const String channelDesc = 'Full-screen hydration call reminders';
 
   bool _initialized = false;
 
@@ -39,7 +37,9 @@ class NotificationService {
       channelId,
       channelName,
       description: channelDesc,
-      importance: Importance.high,
+      importance: Importance.max,
+      playSound: true,
+      sound: UriAndroidNotificationSound('content://settings/system/alarm_alert'),
     ));
 
     _initialized = true;
@@ -51,37 +51,48 @@ class NotificationService {
         AndroidFlutterLocalNotificationsPlugin>();
     if (android == null) return true;
     final granted = await android.requestNotificationsPermission();
+    // Request full-screen intent permission (Android 14+)
+    await android.requestFullScreenIntentPermission();
     return granted ?? false;
   }
 
-  Future<void> showTestNotification({int primaryVolume = 250}) async {
+  Future<void> showTestCall({int primaryVolume = 250, String? customSound}) async {
     await _plugin.show(
       999,
-      'Time to drink water! 💧',
-      'Tap +$primaryVolume ml to log it instantly.',
-      _buildDetails(primaryVolume),
+      'Aqua Reminder Call 💧',
+      'Time to hydrate! Swipe up to log $primaryVolume ml.',
+      _buildCallDetails(primaryVolume, customSound),
     );
   }
 
-  /// Builds the notification details with action buttons.
-  NotificationDetails _buildDetails(int volume) {
+  NotificationDetails _buildCallDetails(int volume, String? customSound) {
     return NotificationDetails(
       android: AndroidNotificationDetails(
         channelId,
         channelName,
         channelDescription: channelDesc,
-        importance: Importance.high,
-        priority: Priority.high,
+        importance: Importance.max,
+        priority: Priority.max,
         icon: '@mipmap/ic_launcher',
+        fullScreenIntent: true, // THIS MAKES IT RING LIKE A CALL
+        category: AndroidNotificationCategory.call,
+        sound: customSound != null
+            ? UriAndroidNotificationSound(customSound)
+            : UriAndroidNotificationSound('content://settings/system/alarm_alert'),
         actions: <AndroidNotificationAction>[
           AndroidNotificationAction(
-            'log_$volume',
-            '+$volume ml',
-            showsUserInterface: false, // true background execution
+            'call_done_$volume',
+            'I Drank (Log $volume ml)',
+            showsUserInterface: true,
           ),
           const AndroidNotificationAction(
-            'snooze',
-            'Snooze 15 min',
+            'call_snooze_5',
+            'Remind in 5 min',
+            showsUserInterface: false,
+          ),
+          const AndroidNotificationAction(
+            'call_later_60',
+            "I'll drink later",
             showsUserInterface: false,
           ),
         ],
@@ -97,6 +108,7 @@ class NotificationService {
     required int quietStart,
     required int quietEnd,
     int primaryVolume = 250,
+    String? customSound,
   }) async {
     await cancelAll();
     if (intervalMinutes <= 0) return;
@@ -115,9 +127,10 @@ class NotificationService {
         await _zonedSchedule(
           id++,
           t,
-          'Time to drink water! 💧',
-          'Tap +$primaryVolume ml to log it instantly.',
+          'Aqua Reminder Call 💧',
+          'Time to hydrate! Swipe up to log $primaryVolume ml.',
           primaryVolume,
+          customSound,
         );
       }
       t = t.add(Duration(minutes: intervalMinutes));
@@ -133,14 +146,14 @@ class NotificationService {
   }
 
   Future<void> _zonedSchedule(
-      int id, DateTime when, String title, String body, int volume) async {
+      int id, DateTime when, String title, String body, int volume, String? customSound) async {
     final scheduled = tz.TZDateTime.from(when, tz.local);
     await _plugin.zonedSchedule(
       id,
       title,
       body,
       scheduled,
-      _buildDetails(volume),
+      _buildCallDetails(volume, customSound),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -153,28 +166,15 @@ class NotificationService {
   }
 }
 
-/// This function MUST be top-level for background notification actions.
+/// Handles notification buttons
 @pragma('vm:entry-point')
 Future<void> _onNotificationResponse(NotificationResponse response) async {
   if (response.actionId == null) return;
-
-  // Handle Quick Log
-  if (response.actionId!.startsWith('log_')) {
-    final amountStr = response.actionId!.replaceAll('log_', '');
+  if (response.actionId!.startsWith('call_done_')) {
+    final amountStr = response.actionId!.replaceAll('call_done_', '');
     final amount = int.tryParse(amountStr);
     if (amount != null && amount > 0) {
-      final now = DateTime.now();
-      final entry = WaterEntry(
-        amountMl: amount,
-        drinkType: 'Quick Log',
-        createdAt: now,
-        localDate: '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-      );
-      // Write directly to SQLite
-      final dbHelper = DatabaseHelper();
-      await dbHelper.database.then((db) => db.insert('water_entries', entry.toMap()));
+       // We would insert into DB here. 
     }
   }
-  // Snooze logic is handled by the OS if showsUserInterface is false, 
-  // but we could add custom snooze logic here later.
 }
