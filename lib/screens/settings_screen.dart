@@ -5,6 +5,7 @@ import '../providers/achievement_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/water_provider.dart';
 import '../services/export_service.dart';
+import '../services/weather_service.dart';
 import '../utils/app_constants.dart';
 import 'containers_screen.dart';
 
@@ -80,6 +81,52 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+
+        _SectionTitle('Weather & Location'),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                title: const Text('Set City'),
+                subtitle: const Text('For smart weather-based hydration goals'),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: () async {
+                  final ws = WeatherService();
+                  final current = await ws.getCity();
+                  if (!context.mounted) return;
+                  final ctrl = TextEditingController(text: current);
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Set your city'),
+                      content: TextField(
+                        controller: ctrl,
+                        decoration: const InputDecoration(hintText: 'e.g. London, Mumbai'),
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                        FilledButton(
+                          onPressed: () async {
+                            final city = ctrl.text.trim();
+                            if (city.isNotEmpty) {
+                              await ws.setCity(city);
+                              if (!context.mounted) return;
+                              Navigator.pop(ctx);
+                              context.read<WaterProvider>().refreshWeather();
+                            }
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+
         const SizedBox(height: 16),
 
         _SectionTitle('Appearance'),

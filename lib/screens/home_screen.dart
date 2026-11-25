@@ -32,6 +32,38 @@ class HomeScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant)),
           const SizedBox(height: 24),
+          Consumer<WaterProvider>(
+            builder: (_, wp, __) {
+              if (wp.weatherData == null) return const SizedBox.shrink();
+              final isHot = wp.weatherBonusMl > 0;
+              return Card(
+                color: isHot ? Colors.orange.withValues(alpha: 0.15) : null,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(isHot ? Icons.wb_sunny : Icons.cloud_outlined, 
+                          color: isHot ? Colors.orange : Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${wp.weatherData!.city}: ${wp.weatherData!.maxTempC.round()}°C', 
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text(isHot 
+                                ? 'Hot day! Added +${wp.weatherBonusMl}ml to your goal.' 
+                                : 'Comfortable weather. Keep to your base goal.',
+                                style: Theme.of(context).textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           Center(
             child: LivingTank(
               progress: wp.progress,

@@ -3,6 +3,7 @@ import '../database/water_dao.dart';
 import '../database/goal_dao.dart';
 import '../models/water_entry.dart';
 import '../utils/date_utils.dart';
+import '../services/weather_service.dart';
 
 class WaterProvider with ChangeNotifier {
   final WaterDao _waterDao = WaterDao();
@@ -13,10 +14,16 @@ class WaterProvider with ChangeNotifier {
   int _todayTotal = 0;
   int _todayGoal = 2000;
   bool _loading = true;
+  int _weatherBonusMl = 0;
+  WeatherData? _weatherData;
+  final WeatherService _weatherService = WeatherService();
 
   List<WaterEntry> get todayEntries => _todayEntries;
   int get todayTotal => _todayTotal;
   int get todayGoal => _todayGoal;
+  int get weatherBonusMl => _weatherBonusMl;
+  WeatherData? get weatherData => _weatherData;
+  int get baseGoal => _todayGoal - _weatherBonusMl;
   bool get loading => _loading;
   double get progress =>
       _todayGoal == 0 ? 0 : (_todayTotal / _todayGoal).clamp(0.0, 1.0);
@@ -26,6 +33,7 @@ class WaterProvider with ChangeNotifier {
     _loading = true;
     notifyListeners();
     await _ensureGoalForToday();
+    await _updateWeather();
     await refresh();
     _loading = false;
     notifyListeners();
@@ -45,7 +53,8 @@ class WaterProvider with ChangeNotifier {
     _today = AppDateUtils.toLocalDateKey(DateTime.now());
     _todayEntries = await _waterDao.entriesForDate(_today);
     _todayTotal = await _waterDao.totalForDate(_today);
-    _todayGoal = await _goalDao.goalForDate(_today);
+    final base = await _goalDao.goalForDate(_today);
+    _todayGoal = base + _weatherBonusMl;
     notifyListeners();
   }
 
@@ -114,6 +123,40 @@ class WaterProvider with ChangeNotifier {
     final mlPerDrink = (remainingMl / drinksNeeded).ceil();
     
     return 'You\'re behind. Drink $drinksNeeded × $mlPerDrink ml before 10 PM to hit your goal.';
+  }
+
+
+  Future<void> _updateWeather() async {
+    final data = await _weatherService.getWeather();
+    if (data == null) {
+      _weatherBonusMl = 0;
+      _weatherData = null;
+      return;
+    }
+    _weatherData = data;
+    
+    // Calculate bonus based on temp and humidity
+    int bonus = 0;
+    if (data.maxTempC >= 35) {
+      bonus = 750;
+    } else if (data.maxTempC >= 30) {
+      bonus = 500;
+    } else if (data.maxTempC >= 25) {
+      bonus = 300;
+    }
+
+    if (data.avgHumidity >= 80) {
+      bonus += 200;
+    } else if (data.avgHumidity >= 65) {
+      bonus += 100;
+    }
+
+    _weatherBonusMl = bonus;
+  }
+
+  Future<void> refreshWeather() async {
+    await _updateWeather();
+    notifyListeners();
   }
 
 }
