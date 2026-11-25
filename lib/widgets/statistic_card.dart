@@ -28,7 +28,7 @@ class StatisticCard extends StatelessWidget {
                 color: c.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: c, size: 22),
+              child: Icon(icon, color: c, size: 22, textDirection: TextDirection.ltr),
             ),
             const SizedBox(width: 12),
             Expanded(

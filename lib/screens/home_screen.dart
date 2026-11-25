@@ -36,27 +36,45 @@ class HomeScreen extends StatelessWidget {
             builder: (_, wp, __) {
               if (wp.weatherData == null) return const SizedBox.shrink();
               final isHot = wp.weatherBonusMl > 0;
+              final isRain = wp.weatherData!.avgHumidity > 80;
+              final icon = isHot ? Icons.wb_sunny : (isRain ? Icons.water_drop : Icons.cloud_outlined);
+              final color = isHot ? Colors.orange : (isRain ? Colors.blue : Theme.of(context).colorScheme.primary);
+              
               return Card(
-                color: isHot ? Colors.orange.withValues(alpha: 0.15) : null,
+                elevation: 2,
+                color: color.withValues(alpha: 0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: color.withValues(alpha: 0.3)),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(isHot ? Icons.wb_sunny : Icons.cloud_outlined, 
-                          color: isHot ? Colors.orange : Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${wp.weatherData!.city}: ${wp.weatherData!.maxTempC.round()}°C', 
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text(isHot 
-                                ? 'Hot day! Added +${wp.weatherBonusMl}ml to your goal.' 
-                                : 'Comfortable weather. Keep to your base goal.',
-                                style: Theme.of(context).textTheme.bodySmall),
-                          ],
-                        ),
+                      Row(
+                        children: [
+                          Icon(icon, color: color, size: 28),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${wp.weatherData!.city} Weather', 
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text('Max ${wp.weatherData!.maxTempC.round()}°C • ${wp.weatherData!.avgHumidity.round()}% Humidity', 
+                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        isHot 
+                            ? 'Because it is hot today, we added +${wp.weatherBonusMl}ml to your goal. Drink before you feel thirsty.'
+                            : 'Comfortable weather today. Stick to your standard goal.',
+                        style: TextStyle(fontSize: 13, color: color.withValues(alpha: 0.9), fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -187,6 +205,11 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 40), // End of page
+          Center(
+            child: Text('You are all caught up! 💧', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ),
+          const SizedBox(height: 80), // Space for Bottom Nav
         ],
       ),
     );

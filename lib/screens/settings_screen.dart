@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../database/water_dao.dart';
+import '../database/database_helper.dart';
 import '../providers/achievement_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/water_provider.dart';
 import '../services/export_service.dart';
-import '../services/weather_service.dart';
 import '../utils/app_constants.dart';
 import 'containers_screen.dart';
 
@@ -83,52 +83,6 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        _SectionTitle('Weather & Location'),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                title: const Text('Set City'),
-                subtitle: const Text('For smart weather-based hydration goals'),
-                trailing: const Icon(Icons.edit_outlined),
-                onTap: () async {
-                  final ws = WeatherService();
-                  final current = await ws.getCity();
-                  if (!context.mounted) return;
-                  final ctrl = TextEditingController(text: current);
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Set your city'),
-                      content: TextField(
-                        controller: ctrl,
-                        decoration: const InputDecoration(hintText: 'e.g. London, Mumbai'),
-                      ),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                        FilledButton(
-                          onPressed: () async {
-                            final city = ctrl.text.trim();
-                            if (city.isNotEmpty) {
-                              await ws.setCity(city);
-                              if (!context.mounted) return;
-                              Navigator.pop(ctx);
-                              context.read<WaterProvider>().refreshWeather();
-                            }
-                          },
-                          child: const Text('Save'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
         _SectionTitle('Appearance'),
         Card(
           child: Column(
@@ -160,6 +114,34 @@ class SettingsScreen extends StatelessWidget {
         Card(
           child: Column(
             children: [
+              ListTile(
+                title: const Text('Generate Demo Data'),
+                subtitle: const Text('Fill database with fake records for testing'),
+                trailing: const Icon(Icons.auto_awesome),
+                onTap: () async {
+                  final db = await DatabaseHelper().database;
+                  await db.transaction((txn) async {
+                    for (int i = 1; i <= 7; i++) {
+                      final date = DateTime.now().subtract(Duration(days: i));
+                      final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                      await txn.insert('water_entries', {
+                        'amount_ml': 2000 + (i * 150),
+                        'drink_type': 'Water',
+                        'created_at': date.toIso8601String(),
+                        'local_date': key,
+                      });
+                      await txn.insert('daily_goals', {
+                        'local_date': key,
+                        'goal_ml': 2000,
+                      });
+                    }
+                  });
+                  if (!context.mounted) return;
+                  context.read<WaterProvider>().refresh();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Demo data generated!')));
+                },
+              ),
+              const Divider(height: 1),
               ListTile(
                 title: const Text('Export records to CSV'),
                 subtitle: const Text('Saved to app documents folder'),
@@ -196,7 +178,7 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 title: Text('Privacy'),
                 subtitle: Text(
-                  'All data stays on your device. No account, no network, no tracking.',
+                  'Your data stays on your device. No account required. Weather features use the internet, but no personal data is tracked or sold.',
                 ),
               ),
             ],
