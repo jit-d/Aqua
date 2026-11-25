@@ -41,6 +41,31 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          if (wp.catchUpMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Card(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          wp.catchUpMessage!,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Consumer<ReminderProvider>(
             builder: (_, rp, __) {
               if (rp.loading) return const SizedBox.shrink();

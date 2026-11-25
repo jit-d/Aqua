@@ -85,4 +85,35 @@ class WaterProvider with ChangeNotifier {
     _todayGoal = goalMl;
     notifyListeners();
   }
+
+  /// Returns a smart catch-up message if the user is behind pace.
+  /// Returns null if they are on track or the day is over.
+  String? get catchUpMessage {
+    final now = DateTime.now();
+    final hour = now.hour;
+    
+    // Only show during the active part of the day (e.g., 10 AM to 8 PM)
+    if (hour < 10 || hour > 20) return null;
+    if (_todayGoal <= 0 || _todayTotal >= _todayGoal) return null;
+
+    final remainingMl = _todayGoal - _todayTotal;
+    
+    // Assume the day ends at 10 PM (22:00)
+    final endOfDay = DateTime(now.year, now.month, now.day, 22, 0);
+    if (now.isAfter(endOfDay)) return null;
+    
+    final hoursLeft = endOfDay.difference(now).inMinutes / 60.0;
+    
+    // If less than 1 hour left, suggest finishing it all
+    if (hoursLeft <= 1.0) {
+      return 'Almost out of time! Drink your remaining $remainingMl ml before 10 PM.';
+    }
+
+    // Suggest 2 or 3 evenly spaced drinks
+    final drinksNeeded = hoursLeft > 4 ? 3 : 2;
+    final mlPerDrink = (remainingMl / drinksNeeded).ceil();
+    
+    return 'You\'re behind. Drink $drinksNeeded × $mlPerDrink ml before 10 PM to hit your goal.';
+  }
+
 }
