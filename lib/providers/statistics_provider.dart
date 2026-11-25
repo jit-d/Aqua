@@ -34,6 +34,9 @@ class StatisticsProvider with ChangeNotifier {
   int get completedDays => _week.where((d) => d.goalMet).length;
   double get completionRate =>
       weekGoalTotal == 0 ? 0 : (weekTotal / weekGoalTotal).clamp(0.0, 1.0);
+  int get bestDayTotal =>
+      _week.isEmpty ? 0 : _week.map((d) => d.totalMl).reduce((a, b) => a > b ? a : b);
+
   DayStat? get bestDay => _week.isEmpty
       ? null
       : _week.reduce((a, b) => a.totalMl >= b.totalMl ? a : b);

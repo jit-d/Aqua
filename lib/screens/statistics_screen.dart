@@ -78,7 +78,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 height: 220,
                 child: sp.weekTotal == 0
                     ? const Center(child: Text('No data this week yet'))
-                    : BarChart(_buildChart(context, sp.week, maxY)),
+                    : BarChart(_buildChart(context, sp, sp.week, maxY)),
               ),
             ),
           ),
@@ -168,7 +168,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   BarChartData _buildChart(
-      BuildContext context, List<DayStat> week, double maxY) {
+      BuildContext context, StatisticsProvider sp, List<DayStat> week, double maxY) {
     final scheme = Theme.of(context).colorScheme;
     final avgGoal = week.fold<int>(0, (s, d) => s + d.goalMl) ~/ week.length;
 
@@ -229,21 +229,51 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
         ),
       ),
-      extraLinesData: ExtraLinesData(horizontalLines: [
-        HorizontalLine(
-          y: avgGoal.toDouble(),
-          color: const Color(0xFF2EAD75),
-          strokeWidth: 1.5,
-          dashArray: [6, 4],
-          label: HorizontalLineLabel(
-            show: true,
-            alignment: Alignment.topRight,
-            style: const TextStyle(
-                fontSize: 10, color: Color(0xFF2EAD75)),
-            labelResolver: (_) => 'Goal',
+      extraLinesData: ExtraLinesData(
+        horizontalLines: [
+          // 1. Daily Goal
+          HorizontalLine(
+            y: avgGoal.toDouble(),
+            color: const Color(0xFF2EAD75),
+            strokeWidth: 1.5,
+            dashArray: [6, 4],
+            label: HorizontalLineLabel(
+              show: true,
+              alignment: Alignment.topRight,
+              style: const TextStyle(fontSize: 10, color: Color(0xFF2EAD75)),
+              labelResolver: (_) => 'Goal',
+            ),
           ),
-        ),
-      ]),
+          // 2. Ghost Line (Best Day this week)
+          if (sp.bestDayTotal > 0)
+            HorizontalLine(
+              y: sp.bestDayTotal.toDouble(),
+              color: Colors.purple.withValues(alpha: 0.4),
+              strokeWidth: 2,
+              dashArray: [4, 4],
+              label: HorizontalLineLabel(
+                show: true,
+                alignment: Alignment.topLeft,
+                style: TextStyle(fontSize: 10, color: Colors.purple.withValues(alpha: 0.8)),
+                labelResolver: (_) => 'Best',
+              ),
+            ),
+          // 3. Pace Line (Ideal progress at this hour)
+          if (sp.isCurrentWeek)
+            HorizontalLine(
+              y: _calculateIdealPace(sp),
+              color: Colors.orange.withValues(alpha: 0.5),
+              strokeWidth: 1.5,
+              dashArray: [2, 4],
+              label: HorizontalLineLabel(
+                show: true,
+                alignment: Alignment.topRight,
+                style: TextStyle(fontSize: 10, color: Colors.orange.withValues(alpha: 0.8)),
+                labelResolver: (_) => 'Pace',
+              ),
+            ),
+        ],
+      ),
       barGroups: List.generate(week.length, (i) {
         final d = week[i];
         final isToday = AppDateUtils.toLocalDateKey(d.date) ==
@@ -265,4 +295,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       }),
     );
   }
+
+  double _calculateIdealPace(StatisticsProvider sp) {
+    final goal = sp.week.last.goalMl.toDouble();
+    final now = DateTime.now();
+    const startHour = 8.0;
+    const endHour = 22.0;
+    final currentHour = now.hour + (now.minute / 60.0);
+    final progress = ((currentHour - startHour) / (endHour - startHour)).clamp(0.0, 1.0);
+    return goal * progress;
+  }
+
+
+
 }
