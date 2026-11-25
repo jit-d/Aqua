@@ -1,11 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../database/water_dao.dart';
 import '../database/goal_dao.dart';
 import '../models/water_entry.dart';
 import '../utils/date_utils.dart';
 import '../services/weather_service.dart';
 
-class WaterProvider with ChangeNotifier {
+class WaterProvider with ChangeNotifier, WidgetsBindingObserver {
   final WaterDao _waterDao = WaterDao();
   final GoalDao _goalDao = GoalDao();
 
@@ -29,7 +29,22 @@ class WaterProvider with ChangeNotifier {
       _todayGoal == 0 ? 0 : (_todayTotal / _todayGoal).clamp(0.0, 1.0);
   int get remaining => (_todayGoal - _todayTotal).clamp(0, _todayGoal);
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkNewDay();
+    }
+  }
+
+  Future<void> _checkNewDay() async {
+    final today = AppDateUtils.toLocalDateKey(DateTime.now());
+    if (today != _today) {
+      await init(); // Triggers a full refresh and weather fetch
+    }
+  }
+
   Future<void> init() async {
+    WidgetsBinding.instance.addObserver(this);
     _loading = true;
     notifyListeners();
     await _ensureGoalForToday();
