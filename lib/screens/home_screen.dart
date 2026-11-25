@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/container_provider.dart';
 import '../providers/reminder_provider.dart';
 import '../providers/water_provider.dart';
 import '../widgets/quick_add_button.dart';
@@ -68,14 +69,26 @@ class HomeScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              for (final a in AppConstants.quickAddAmounts)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: QuickAddButton(amount: a, onTap: () => wp.addWater(a)),
-                ),
-            ],
+          Consumer<ContainerProvider>(
+            builder: (_, cp, __) {
+              if (cp.loading || cp.containers.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              final quick = cp.containers.take(4).toList();
+              return Row(
+                children: [
+                  for (int i = 0; i < quick.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: QuickAddButton(
+                        amount: quick[i].volumeMl,
+                        onTap: () => wp.addWater(quick[i].volumeMl,
+                            drinkType: quick[i].name),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 8),
           FilledButton.icon(

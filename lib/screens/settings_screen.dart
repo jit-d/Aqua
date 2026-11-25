@@ -6,6 +6,7 @@ import '../providers/settings_provider.dart';
 import '../providers/water_provider.dart';
 import '../services/export_service.dart';
 import '../utils/app_constants.dart';
+import 'containers_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -48,6 +49,19 @@ class SettingsScreen extends StatelessWidget {
                     if (v != null) sp.setUnit(v);
                   },
                 ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('My Containers'),
+                subtitle: const Text('Customise your quick-add sizes'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ContainersScreen()),
+                  );
+                },
               ),
               const Divider(height: 1),
               ListTile(

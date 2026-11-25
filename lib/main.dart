@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app/app.dart';
 import 'providers/achievement_provider.dart';
+import 'providers/container_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/statistics_provider.dart';
@@ -20,6 +21,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => StatisticsProvider()),
         ChangeNotifierProvider(create: (_) => ReminderProvider()..load()),
         ChangeNotifierProvider(create: (_) => AchievementProvider()),
+        ChangeNotifierProvider(create: (_) => ContainerProvider()..init()),
       ],
       child: const AquaApp(),
     ),

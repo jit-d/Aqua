@@ -65,11 +65,28 @@ class DatabaseHelper {
         progress INTEGER
       )
     ''');
+    await db.execute('''
+      CREATE TABLE containers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        volume_ml INTEGER NOT NULL,
+        icon TEXT NOT NULL
+      )
+    ''');
     await db.execute('CREATE INDEX idx_water_local_date ON water_entries(local_date)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Future migrations go here.
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE containers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          volume_ml INTEGER NOT NULL,
+          icon TEXT NOT NULL
+        )
+      ''');
+    }
   }
 
   Future<void> close() async {
