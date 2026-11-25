@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/reminder_provider.dart';
+import '../providers/container_provider.dart';
+import '../services/notification_service.dart';
 import '../utils/app_constants.dart';
 
 class ReminderScreen extends StatelessWidget {
@@ -127,7 +129,11 @@ class ReminderScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: rp.sendTest,
+          onPressed: () {
+            final cp = context.read<ContainerProvider>();
+            final primary = cp.primary?.volumeMl ?? 250;
+            NotificationService().showTestNotification(primaryVolume: primary);
+          },
           icon: const Icon(Icons.notifications_active),
           label: const Text('Send test notification'),
         ),

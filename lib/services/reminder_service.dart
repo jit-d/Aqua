@@ -11,6 +11,7 @@ class ReminderService {
     required bool quietEnabled,
     required int quietStart,
     required int quietEnd,
+    int primaryVolume = 250,
   }) async {
     if (!enabled) {
       await _notifications.cancelAll();
@@ -23,6 +24,7 @@ class ReminderService {
       quietEnabled: quietEnabled,
       quietStart: quietStart,
       quietEnd: quietEnd,
+      primaryVolume: primaryVolume,
     );
   }
 }

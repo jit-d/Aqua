@@ -17,6 +17,7 @@ class ReminderProvider with ChangeNotifier {
 
   bool _enabled = false;
   int _interval = 60;
+  int _primaryVolume = 250;
   int _startMinutes = 9 * 60; // 09:00
   int _endMinutes = 21 * 60; // 21:00
   bool _quietEnabled = true;
@@ -71,6 +72,7 @@ class ReminderProvider with ChangeNotifier {
       quietEnabled: _quietEnabled,
       quietStart: _quietStart,
       quietEnd: _quietEnd,
+      primaryVolume: _primaryVolume,
     );
   }
 
@@ -134,6 +136,11 @@ class ReminderProvider with ChangeNotifier {
     _pauseAfterGoal = v;
     notifyListeners();
     await _persist();
+  }
+
+  void setPrimaryVolume(int vol) {
+    _primaryVolume = vol;
+    if (_enabled) _reschedule();
   }
 
   Future<void> sendTest() async {
