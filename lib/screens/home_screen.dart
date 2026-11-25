@@ -4,7 +4,7 @@ import '../providers/container_provider.dart';
 import '../providers/reminder_provider.dart';
 import '../providers/water_provider.dart';
 import '../widgets/quick_add_button.dart';
-import '../widgets/water_progress_ring.dart';
+import '../widgets/living_tank.dart';
 import '../utils/app_constants.dart';
 import '../utils/date_utils.dart';
 
@@ -33,11 +33,10 @@ class HomeScreen extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant)),
           const SizedBox(height: 24),
           Center(
-            child: WaterProgressRing(
+            child: LivingTank(
               progress: wp.progress,
               totalMl: wp.todayTotal,
               goalMl: wp.todayGoal,
-              remainingMl: wp.remaining,
             ),
           ),
           const SizedBox(height: 16),
