@@ -83,6 +83,45 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
+        _SectionTitle('Profile & Body'),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                title: const Text('Age'),
+                trailing: Text('${sp.age} years'),
+                onTap: () => _showNumberDialog(context, 'Age', sp.age.toDouble(), (v) => sp.setProfile(age: v.toInt())),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('Weight (kg)'),
+                trailing: Text('${sp.weightKg.toStringAsFixed(1)} kg'),
+                onTap: () => _showNumberDialog(context, 'Weight (kg)', sp.weightKg, (v) => sp.setProfile(weight: v)),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('Daily Exercise'),
+                trailing: Text('${sp.exerciseMinutes} mins'),
+                onTap: () => _showNumberDialog(context, 'Exercise (mins)', sp.exerciseMinutes.toDouble(), (v) => sp.setProfile(exercise: v.toInt())),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('Region'),
+                trailing: DropdownButton<String>(
+                  value: sp.region,
+                  items: const [
+                    DropdownMenuItem(value: 'temperate', child: Text('Temperate')),
+                    DropdownMenuItem(value: 'tropical', child: Text('Tropical')),
+                    DropdownMenuItem(value: 'cold', child: Text('Cold')),
+                  ],
+                  onChanged: (v) { if (v != null) sp.setProfile(region: v); },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
         _SectionTitle('Appearance'),
         Card(
           child: Column(
@@ -185,6 +224,30 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showNumberDialog(BuildContext context, String label, double current, ValueChanged<double> onSave) async {
+    final ctrl = TextEditingController(text: current.toString());
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(label),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final v = double.tryParse(ctrl.text);
+              if (v != null) { onSave(v); Navigator.pop(ctx); }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 

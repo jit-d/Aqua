@@ -5,12 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 class WeatherData {
   final double maxTempC;
   final double avgHumidity;
+  final List<double> hourlyTemps;
   final DateTime fetchedAt;
   final String city;
 
   WeatherData({
     required this.maxTempC,
     required this.avgHumidity,
+    required this.hourlyTemps,
     required this.fetchedAt,
     required this.city,
   });
@@ -21,14 +23,11 @@ class WeatherService {
   static const _kCacheTemp = 'weather_cache_temp';
   static const _kCacheHumidity = 'weather_cache_humidity';
   static const _kCityName = 'weather_city_name';
-  
-  // 30 hours in milliseconds
-  static const int _maxOfflineHours = 30 * 60 * 60 * 1000;
+  static const _kFetchDate = 'weather_fetch_date';
 
   Future<void> setCity(String city) async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kCityName, city);
-    // Clear cache to force a new fetch for the new city
     await p.remove(_kCacheTime);
   }
 
@@ -41,32 +40,34 @@ class WeatherService {
     final p = await SharedPreferences.getInstance();
     final city = await getCity();
     final cachedTimeStr = p.getString(_kCacheTime);
-    
-    if (cachedTimeStr != null) {
+    final cachedDateStr = p.getString(_kFetchDate);
+    final todayStr = _getTodayStr();
+    final isNewDay = cachedDateStr != todayStr;
+
+    if (cachedTimeStr != null && !isNewDay) {
       final cachedTime = DateTime.parse(cachedTimeStr);
-      final diff = DateTime.now().difference(cachedTime).inMilliseconds;
-      
-      if (diff < _maxOfflineHours) {
-        // Use valid cache (within 30 hours)
+      final diff = DateTime.now().difference(cachedTime).inHours;
+      if (diff < 30) {
         return WeatherData(
           maxTempC: p.getDouble(_kCacheTemp) ?? 20.0,
           avgHumidity: p.getDouble(_kCacheHumidity) ?? 50.0,
+          hourlyTemps: (p.getStringList('weather_hourly') ?? []).map(double.parse).toList(),
           fetchedAt: cachedTime,
           city: city,
         );
       }
     }
 
-    // Cache expired or missing — fetch new data
     try {
-      return await _fetchFromApi(city);
+      final freshData = await _fetchFromApi(city);
+      await p.setString(_kFetchDate, todayStr);
+      return freshData;
     } catch (e) {
-      // If offline, fallback to cache if it exists (even if expired)
-      // or return null to use default goal.
       if (cachedTimeStr != null) {
         return WeatherData(
           maxTempC: p.getDouble(_kCacheTemp) ?? 20.0,
           avgHumidity: p.getDouble(_kCacheHumidity) ?? 50.0,
+          hourlyTemps: (p.getStringList('weather_hourly') ?? []).map(double.parse).toList(),
           fetchedAt: DateTime.parse(cachedTimeStr),
           city: city,
         );
@@ -76,7 +77,7 @@ class WeatherService {
   }
 
   Future<WeatherData> _fetchFromApi(String city) async {
-    // 1. Geocode the city to Lat/Lon
+    // 1. Geocode the city
     final geoUrl = Uri.parse(
         'https://geocoding-api.open-meteo.com/v1/search?name=$city&count=1&language=en&format=json');
     final geoRes = await http.get(geoUrl);
@@ -86,6 +87,7 @@ class WeatherService {
     if (geoData['results'] == null || geoData['results'].isEmpty) {
       throw Exception('City not found');
     }
+    
     final lat = geoData['results'][0]['latitude'];
     final lon = geoData['results'][0]['longitude'];
 
@@ -93,14 +95,13 @@ class WeatherService {
     final weatherUrl = Uri.parse(
         'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&hourly=temperature_2m,relative_humidity_2m&forecast_days=2&timezone=auto');
     final weatherRes = await http.get(weatherUrl);
-    if (weatherRes.statusCode != 200) throw Exception('Weather API failed');
+    if (weatherRes.statusCode != 200) throw Exception('Weather failed');
 
     final weatherData = json.decode(weatherRes.body);
-    final hourly = weatherData['hourly'];
-    
-    // Get the max temp for today
-    final temps = List<double>.from(hourly['temperature_2m'].map((x) => (x as num).toDouble()));
-    final hums = List<double>.from(hourly['relative_humidity_2m'].map((x) => (x as num).toDouble()));
+    final temps = List<double>.from(
+        weatherData['hourly']['temperature_2m'].map((x) => (x as num).toDouble()));
+    final hums = List<double>.from(
+        weatherData['hourly']['relative_humidity_2m'].map((x) => (x as num).toDouble()));
     
     final maxTemp = temps.reduce((a, b) => a > b ? a : b);
     final avgHumidity = hums.reduce((a, b) => a + b) / hums.length;
@@ -110,12 +111,19 @@ class WeatherService {
     await p.setString(_kCacheTime, DateTime.now().toIso8601String());
     await p.setDouble(_kCacheTemp, maxTemp);
     await p.setDouble(_kCacheHumidity, avgHumidity);
+    await p.setStringList('weather_hourly', temps.map((e) => e.toString()).toList());
 
     return WeatherData(
       maxTempC: maxTemp,
       avgHumidity: avgHumidity,
+      hourlyTemps: temps,
       fetchedAt: DateTime.now(),
       city: city,
     );
+  }
+
+  String _getTodayStr() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 }
